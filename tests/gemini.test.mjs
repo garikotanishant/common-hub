@@ -49,3 +49,14 @@ test("model discovery returns only the free-model allowlist", async () => {
     : Response.json({ error: {} }, { status: 404 }) });
   assert.deepEqual((await (await handle(request({ message: "library" }))).json()).availableModels, ["gemini-3.1-flash-lite"]);
 });
+
+test("books finds the library even when many other records share the city name", async () => {
+  const records = Array.from({ length: 30 }, (_, i) => ({ id: "school-" + i, name: "Suwanee School " + i, description: "Education in Suwanee", tags: [] }));
+  records.push({ id: "library", name: "Suwanee Branch Library", description: "Book collections and study rooms", tags: ["reading"] });
+  const handle = createChatHandler({ catalog: records, apiKey: "test-secret", fetchImpl: async (_url, options) => {
+    const context = JSON.parse(options.body).systemInstruction.parts[0].text;
+    assert.ok(context.includes("Suwanee Branch Library"));
+    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ answer: "Try the library.", resourceIds: ["library"] }) }] } }] });
+  } });
+  assert.equal((await handle(request({ message: "Where can I find books in Suwanee?" }))).status, 200);
+});
