@@ -1,5 +1,5 @@
 // This module runs on the server. Neither the key nor this module is published as a static asset.
-export function createChatHandler({ catalog, apiKey, model = "gemini-2.5-flash-lite", fetchImpl = fetch, siteOrigin = "" }) {
+export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-lite", fetchImpl = fetch, siteOrigin = "" }) {
   const allowed = new Set(["https://garikotanishant.github.io", siteOrigin].filter(Boolean));
   const normalize = text => String(text).toLowerCase().replace(/[^a-z0-9 ]/g, " ");
   function reply(data, status, origin) {
@@ -33,7 +33,7 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-2.5-flash-l
         if (response.status === 404) {
           const listing = await fetchImpl("https://generativelanguage.googleapis.com/v1beta/models", { headers: { "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(10000) });
           const available = listing.ok ? await listing.json() : {};
-          const permitted = new Set(["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"]);
+          const permitted = new Set(["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"]);
           const availableModels = (available.models || []).filter(m => m.supportedGenerationMethods?.includes("generateContent")).map(m => m.name?.replace(/^models\//, "")).filter(m => permitted.has(m));
           return reply({ error: "model_unavailable", providerStatus: 404, availableModels }, 502, origin);
         }

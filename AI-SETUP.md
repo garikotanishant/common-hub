@@ -12,7 +12,7 @@ If you add or change the key after deployment, redeploy on Netlify for the funct
 
 ## What the assistant does
 
-- Answers community-resource questions with Gemini 2.5 Flash-Lite, using matching entries from the catalog.
+- Answers community-resource questions with Gemini 3.1 Flash-Lite, using matching entries from the catalog.
 - Links to real catalog records; the backend rejects resource IDs invented by the model.
 - Keeps existing local search, page navigation, saved places, and email-draft controls.
 - Uses the same minimal DM Sans header as the website.
@@ -21,7 +21,7 @@ If you add or change the key after deployment, redeploy on Netlify for the funct
 
 The backend limits requests by IP, caps message and answer length, and allows browser calls only from the Netlify project and your GitHub Pages origin. These reduce casual abuse; a public anonymous endpoint can still consume a free quota. No chat or key is written to application logs. The server's health response shows only whether a key is configured, never the key itself.
 
-The model can be changed using the optional private environment variable `GEMINI_MODEL`. Verify the chosen model's availability and free tier before changing it. Default: `gemini-2.5-flash-lite`.
+The model can be changed using the optional private environment variable `GEMINI_MODEL`. Verify the chosen model's availability and free tier before changing it. Default: `gemini-3.1-flash-lite`.
 
 ## Local verification
 

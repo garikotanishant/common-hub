@@ -42,3 +42,10 @@ test("quota and provider errors do not leak response text or keys", async () => 
     assert.ok(!(await response.text()).includes("test-secret"));
   }
 });
+
+test("model discovery returns only the free-model allowlist", async () => {
+  const handle = createChatHandler({ catalog, apiKey: "test-secret", fetchImpl: async url => url.endsWith("/models")
+    ? Response.json({ models: [{ name: "models/gemini-3.1-flash-lite", supportedGenerationMethods: ["generateContent"] }, { name: "models/some-paid-model", supportedGenerationMethods: ["generateContent"] }] })
+    : Response.json({ error: {} }, { status: 404 }) });
+  assert.deepEqual((await (await handle(request({ message: "library" }))).json()).availableModels, ["gemini-3.1-flash-lite"]);
+});
