@@ -29,7 +29,13 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-2.5-flash-l
         method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(20000),
         body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents, generationConfig: { temperature: 0.25, maxOutputTokens: 600, responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { answer: { type: "STRING" }, resourceIds: { type: "ARRAY", items: { type: "STRING" } } }, required: ["answer", "resourceIds"] } } })
       });
-      if (!response.ok) return reply({ error: response.status === 429 ? "quota_exceeded" : "provider_unavailable" }, response.status === 429 ? 429 : 502, origin);
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        const reason = detail.error?.details?.find(item => typeof item.reason === "string")?.reason;
+        const safeReasons = new Set(["API_KEY_INVALID", "API_KEY_EXPIRED", "API_KEY_SERVICE_BLOCKED", "API_KEY_HTTP_REFERRER_BLOCKED", "SERVICE_DISABLED", "BILLING_DISABLED"]);
+        const error = response.status === 429 ? "quota_exceeded" : reason === "API_KEY_INVALID" || reason === "API_KEY_EXPIRED" ? "invalid_api_key" : response.status === 404 ? "model_unavailable" : "provider_unavailable";
+        return reply({ error, providerStatus: response.status, ...(safeReasons.has(reason) ? { reason } : {}) }, response.status === 429 ? 429 : 502, origin);
+      }
       const result = await response.json();
       const text = result.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("");
       const parsed = JSON.parse(text || "{}");

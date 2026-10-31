@@ -3,7 +3,7 @@ import { createChatHandler } from "../../backend/gemini.mjs";
 
 export default async request => createChatHandler({
   catalog,
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY?.trim(),
   model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
   siteOrigin: process.env.URL || new URL(request.url).origin
 })(request);
