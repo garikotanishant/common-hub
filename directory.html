@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#123e35" />
+    <meta
+      name="description"
+      content="Search 100 local resources, save your favorites, and explore a real map of Suwanee and Gwinnett."
+    />
+    <title>Explore resources | COMMON</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="assets/vendor/leaflet.css" />
+    <script src="assets/vendor/leaflet.js" defer></script>
+    <script src="resources-data.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body class="directory-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html" aria-label="COMMON home"
+          ><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span
+          ><span>common<span class="brand-dot">.</span></span></a
+        >
+        <nav class="desktop-nav" aria-label="Main navigation">
+          <a href="directory.html" aria-current="page">Explore resources</a
+          ><a href="about.html">Our story</a><a href="contact.html">Get in touch</a>
+        </nav>
+        <div class="nav-end">
+          <a class="saved-link" href="directory.html?saved=1" aria-label="Saved resources"
+            ><svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.65"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 3h12v19l-6-4-6 4Z" /></svg
+            ><span>Saved</span><span class="saved-count">0</span></a
+          ><a class="button nav-suggest" href="submit-resource.html"
+            >Suggest a place
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.65"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4v16M4 12h16" /></svg></a
+          ><button
+            class="menu-button icon-button"
+            aria-label="Open menu"
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.65"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18M3 12h18M3 18h18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <nav id="mobile-menu" class="mobile-menu" aria-label="Mobile navigation" hidden>
+        <a href="directory.html">Explore resources</a><a href="about.html">Our story</a
+        ><a href="contact.html">Get in touch</a><a href="submit-resource.html">Suggest a place</a>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="directory-intro">
+        <div>
+          <p class="eyebrow">A LITTLE LOCAL KNOWLEDGE</p>
+          <h1>Find your kind of <em>nearby.</em></h1>
+          <p>One place for the resources that make everyday life a little easier.</p>
+        </div>
+        <a class="quiet-link" href="submit-resource.html"
+          >Missing something?
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.65"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 4v16M4 12h16" /></svg
+        ></a>
+      </section>
+      <section class="directory-workspace" aria-label="Resource directory">
+        <div class="directory-controls">
+          <form id="directory-search" class="directory-search" role="search">
+            <label class="sr-only" for="resource-search">Search resources</label
+            ><svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.65"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 5 5" /></svg
+            ><input
+              type="search"
+              id="resource-search"
+              placeholder="Search a name, service, or ZIP code"
+              autocomplete="off"
+            /><button type="submit" class="button button-dark">Search</button>
+          </form>
+          <div class="filter-row">
+            <div class="category-chips" id="category-chips" aria-label="Filter by category"></div>
+            <button id="saved-filter" class="chip saved-filter" aria-pressed="false">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.65"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 3h12v19l-6-4-6 4Z" />
+              </svg>
+              Saved
+            </button>
+          </div>
+          <div class="results-toolbar">
+            <p id="results-count" role="status" aria-live="polite"></p>
+            <div class="results-actions">
+              <label for="sort-order" class="sr-only">Sort resources</label
+              ><select id="sort-order">
+                <option value="recommended">Recommended</option>
+                <option value="az">Name: A–Z</option>
+                <option value="za">Name: Z–A</option>
+              </select>
+              <div class="view-switch" aria-label="Results view">
+                <button type="button" id="view-split" aria-label="List and map" aria-pressed="true">
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.65"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m2 5 7-3 6 3 7-3v17l-7 3-6-3-7 3V5Zm7-3v17m6-14v17" /></svg
+                  ><span>Map</span></button
+                ><button type="button" id="view-list" aria-label="List only" aria-pressed="false">
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.65"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 6h18M3 12h18M3 18h18" /></svg
+                  ><span>List</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="explorer">
+          <div class="results-panel">
+            <div id="resource-results"></div>
+            <div class="load-more-wrap">
+              <button class="button button-outline" id="load-more" hidden>
+                Show more resources
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.65"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v16M4 12h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <aside class="map-panel" aria-label="Map of matching resource locations">
+            <div id="resource-map"></div>
+            <div class="map-top-note">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.65"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              <span id="map-count">Suwanee & Gwinnett</span>
+            </div>
+            <button id="fit-map" class="map-fit">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.65"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m2 5 7-3 6 3 7-3v17l-7 3-6-3-7 3V5Zm7-3v17m6-14v17" />
+              </svg>
+              Show all pins
+            </button>
+            <p class="map-data-note">
+              Pins use locations from the supplied dataset. Service-area-only listings stay in the
+              list.
+            </p>
+            <p id="map-error" class="map-error" role="status" hidden>
+              Map unavailable. You can still search every resource and open address directions.
+            </p>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="footer-top">
+        <div>
+          <a class="brand" href="index.html" aria-label="COMMON home"
+            ><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span
+            ><span>common<span class="brand-dot">.</span></span></a
+          >
+          <p>A little local knowledge.<br />A lot more community.</p>
+        </div>
+        <div class="footer-links">
+          <a href="directory.html">Explore resources</a><a href="about.html">Our story</a
+          ><a href="submit-resource.html">Suggest a place</a><a href="contact.html">Get in touch</a>
+        </div>
+        <div class="footer-local">
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.65"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
+            <circle cx="12" cy="10" r="2.5" /></svg
+          ><span>Rooted in Suwanee.<br />Here for Gwinnett.</span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>COMMON · A student-built community guide</span
+        ><span>Confirm hours and availability before you go.</span
+        ><a href="about.html#sources"
+          >Sources & credits
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.65"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M14 3h7v7m0-7L10 14M10 3H3v18h18v-7" /></svg
+        ></a>
+      </div>
+    </footer>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <dialog id="resource-dialog" aria-labelledby="detail-title">
+      <div class="detail-top">
+        <span class="eyebrow">A closer look</span
+        ><button class="icon-button" data-close-dialog aria-label="Close resource details">
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.65"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m5 5 14 14M19 5 5 19" />
+          </svg>
+        </button>
+      </div>
+      <div id="resource-detail"></div>
+    </dialog>
+  </body>
+</html>
