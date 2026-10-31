@@ -30,6 +30,13 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-2.5-flash-l
         body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents, generationConfig: { temperature: 0.25, maxOutputTokens: 600, responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { answer: { type: "STRING" }, resourceIds: { type: "ARRAY", items: { type: "STRING" } } }, required: ["answer", "resourceIds"] } } })
       });
       if (!response.ok) {
+        if (response.status === 404) {
+          const listing = await fetchImpl("https://generativelanguage.googleapis.com/v1beta/models", { headers: { "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(10000) });
+          const available = listing.ok ? await listing.json() : {};
+          const permitted = new Set(["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"]);
+          const availableModels = (available.models || []).filter(m => m.supportedGenerationMethods?.includes("generateContent")).map(m => m.name?.replace(/^models\//, "")).filter(m => permitted.has(m));
+          return reply({ error: "model_unavailable", providerStatus: 404, availableModels }, 502, origin);
+        }
         const detail = await response.json().catch(() => ({}));
         const reason = detail.error?.details?.find(item => typeof item.reason === "string")?.reason;
         const safeReasons = new Set(["API_KEY_INVALID", "API_KEY_EXPIRED", "API_KEY_SERVICE_BLOCKED", "API_KEY_HTTP_REFERRER_BLOCKED", "SERVICE_DISABLED", "BILLING_DISABLED"]);
