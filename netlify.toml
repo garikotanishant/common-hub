@@ -1,0 +1,20 @@
+[build]
+  command = "node scripts/build-netlify.mjs"
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Content-Type-Options = "nosniff"
+
+# Netlify prompts for this value privately when using the Deploy to Netlify flow.
+[template.environment]
+  GEMINI_API_KEY = "Paste your Gemini API key here. Keep billing disabled for the free tier."

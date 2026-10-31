@@ -43,6 +43,53 @@
   let memoryDraft = null;
   let memoryEmail = null;
   let catalogPromise = null;
+  let aiReady = false;
+  let aiBusy = false;
+  const endpoint = window.COMMON_ASSISTANT_CONFIG?.endpoint || "/api/chat";
+  const aiConsentKey = "common.assistant.geminiConsent.v1";
+
+  async function checkAI() {
+    try {
+      const response = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) return;
+      const health = await response.json();
+      aiReady = health.configured === true;
+      const status = document.getElementById("assistantMode");
+      if (status) status.textContent = aiReady ? "Gemini · community guide" : "Community guide";
+      const consent = document.getElementById("assistantConsent");
+      if (consent) consent.hidden = !aiReady;
+    } catch { /* The local helper stays available on GitHub Pages without a backend. */ }
+  }
+
+  async function answerWithAI(text) {
+    if (!aiReady || !document.getElementById("assistantAIConsent")?.checked) return false;
+    aiBusy = true;
+    const send = document.querySelector("#assistantForm button");
+    const status = document.getElementById("assistantStatus");
+    if (send) send.disabled = true;
+    if (status) { status.hidden = false; status.textContent = "Thinking…"; }
+    try {
+      const history = getHistory().slice(0, -1).slice(-6).map(({ role, text }) => ({ role, text }));
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text, history }), signal: AbortSignal.timeout(25000) });
+      if (!response.ok) throw new Error(response.status === 429 ? "quota" : "unavailable");
+      const result = await response.json();
+      if (typeof result.answer !== "string") throw new Error("unavailable");
+      appendMessage("assistant", result.answer);
+      const catalog = await loadCatalog();
+      const ids = new Set(Array.isArray(result.resourceIds) ? result.resourceIds : []);
+      showActions(catalog.filter(r => ids.has(r.id)).slice(0, 3).map(r => ({ label: r.name, action: "navigate", value: `directory.html?resource=${encodeURIComponent(r.id)}` })));
+      return true;
+    } catch (error) {
+      appendMessage("assistant", error.message === "quota" ? "The AI request limit has been reached. You can still search and browse the directory below." : "Gemini isn’t available right now. You can still use the directory and saved places.");
+      const query = text.slice(0, 200);
+      showActions([{ label: "Search the directory", action: "navigate", value: `directory.html?q=${encodeURIComponent(query)}` }]);
+      return true;
+    } finally {
+      aiBusy = false;
+      if (send) send.disabled = false;
+      if (status) status.hidden = true;
+    }
+  }
 
   function readSession(key, fallback) {
     try {
@@ -153,8 +200,8 @@
         <header class="assistant-header">
           <span class="assistant-icon" aria-hidden="true">✦</span>
           <div>
-            <h2 id="assistantTitle">COMMON helper</h2>
-            <p>Private, on-device site guide</p>
+            <h2 id="assistantTitle">COMMON</h2>
+            <p id="assistantMode">Community guide</p>
           </div>
           <button type="button" class="assistant-close" aria-label="Close helper">×</button>
         </header>
@@ -165,12 +212,14 @@
           <button type="button" data-assistant-prompt="Show my saved resources">Saved resources</button>
           <button type="button" data-assistant-prompt="Help me suggest a resource">Suggest a resource</button>
         </div>
+        <div id="assistantConsent" class="assistant-consent" hidden><label><input id="assistantAIConsent" type="checkbox">Use Gemini for AI answers. My question and recent chat will be sent to Google. I’ll avoid sharing personal details.</label></div>
+        <p id="assistantStatus" class="assistant-status" role="status" hidden></p>
         <form id="assistantForm" class="assistant-form">
           <label class="sr-only" for="assistantInput">Ask COMMON helper</label>
           <textarea id="assistantInput" rows="2" maxlength="1200" placeholder="Ask how to use the site…" required></textarea>
           <button type="submit" aria-label="Send message">Send</button>
         </form>
-        <p class="assistant-privacy">This helper runs in your browser. It cannot verify changing service details or send email.</p>
+        <p class="assistant-privacy">Check hours and eligibility with the organization. The guide can’t send email or verify live availability.</p>
       </section>
       <button id="assistantToggle" class="assistant-toggle" type="button" aria-expanded="false" aria-controls="assistantPanel" aria-label="Open COMMON helper">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5.75A2.75 2.75 0 0 1 7.75 3h8.5A2.75 2.75 0 0 1 19 5.75v7.5A2.75 2.75 0 0 1 16.25 16H11l-4.5 4v-4.33A2.75 2.75 0 0 1 5 13.25z"/><path d="M9 8h6M9 11.5h4"/></svg>
@@ -179,7 +228,11 @@
     document.body.append(widget);
     widget.addEventListener("click", handleWidgetClick);
     widget.querySelector("#assistantForm").addEventListener("submit", handleSubmit);
+    const consent = widget.querySelector("#assistantAIConsent");
+    consent.checked = readSession(aiConsentKey, false) === true;
+    consent.addEventListener("change", () => writeSession(aiConsentKey, consent.checked));
     renderHistory();
+    checkAI();
   }
 
   function handleWidgetClick(event) {
@@ -540,6 +593,7 @@
   }
 
   async function processMessage(text) {
+    if (aiBusy) return;
     appendMessage("user", text);
     showActions([]);
     const normalized = normalize(text);
@@ -605,7 +659,7 @@
     }
 
     const category = categoryMatch(text);
-    if (/\b(search|find|look for|show me|browse)\b/.test(normalized)) {
+    if (/\b(search|find|look for|show me|browse)\b/.test(normalized) && !(aiReady && document.getElementById("assistantAIConsent")?.checked)) {
       let query = text.replace(/\b(search|find|look for|show me|browse|please|resources?|in the directory|directory)\b/gi, "").trim();
       if (category) query = query.replace(new RegExp(category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim();
       updateDirectorySearch(query, category);
@@ -623,6 +677,8 @@
       window.location.href = page;
       return;
     }
+
+    if (await answerWithAI(text)) return;
 
     if (/\b(help|what can you do|how does this work)\b/.test(normalized)) {
       appendMessage("assistant", "I can find directory entries, filter the directory, save resources in this browser, show your saved list, navigate pages, prepare an email draft for a contact to review, and guide you through the resource suggestion form. I work locally, do not send email, and cannot verify current details.");

@@ -37,3 +37,8 @@ The real map needs an internet connection for map tiles. Globe rendering uses bu
 ## Privacy
 
 Saved resources and suggestions use localStorage in the current browser and site origin. They do not sync across devices. Suggestions can be removed from their detail panel. The website does not request geolocation or include analytics. Map tiles and fonts are fetched directly from their respective providers.
+
+## Gemini assistant
+
+The optional Gemini backend is configured separately so the main website can remain on GitHub Pages. See [AI-SETUP.md](AI-SETUP.md) for the private key field and deployment steps. Questions and recent chat are sent to Google only when the visitor opts in. Without a configured backend, the local directory helper remains available.
+

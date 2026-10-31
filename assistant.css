@@ -88,9 +88,11 @@
 
     .assistant-header h2 {
       margin: 0;
-      font-family: "Fraunces", Georgia, serif;
-      font-size: 1.12rem;
-      font-weight: 600;
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 500;
+      font-style: normal;
+      letter-spacing: -0.02em;
     }
 
     .assistant-header p {
@@ -98,6 +100,14 @@
       color: #f8f7f3e0;
       font-size: 0.72rem;
     }
+
+    .assistant-icon { display: none; }
+    .assistant-form button { background: var(--lime); border-color: var(--lime); }
+    .assistant-form button:disabled { opacity: 0.55; cursor: wait; }
+    .assistant-consent { padding: 0.75rem 1rem; border-top: 1px solid #d9dfd5; font-size: 0.72rem; color: #43564f; }
+    .assistant-consent label { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; }
+    .assistant-consent input { margin-top: 0.25rem; accent-color: var(--forest); }
+    .assistant-status { padding: 0 1rem 0.5rem; color: #5b6c5f; font-size: 0.72rem; }
 
     .assistant-close {
       width: 2rem;
@@ -208,15 +218,15 @@
     .assistant-form button {
       min-height: 44px;
       padding: 0 0.85rem;
-      border-color: #9e6836;
+      border-color: var(--lime);
       border-radius: 0.7rem;
-      background: #d6a06d;
+      background: var(--lime);
       color: #11221f;
       font-size: 0.78rem;
     }
 
     .assistant-form button:hover {
-      background: #e5b486;
+      background: #e4f7ae;
     }
 
     .assistant-privacy {
