@@ -1,0 +1,11 @@
+{
+  "name": "common-hub",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build-netlify.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

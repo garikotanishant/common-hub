@@ -26,3 +26,9 @@ The model can be changed using the optional private environment variable `GEMINI
 ## Local verification
 
 Run `node scripts/build-netlify.mjs`, then `node --test tests/gemini.test.mjs`. Tests use a fake provider and never need your key. Static preview alone keeps the local helper; a Netlify function runtime is required for Gemini requests.
+
+## Connection recovery
+
+The widget keeps the Gemini opt-in visible when its health check fails. It retries when reopened, when the browser comes online, or when a visitor selects **Retry Gemini connection**. A consented question can retry chat directly, so a failed initial health check cannot disable Gemini for the rest of the tab. A network failure is shown separately from local directory features.
+
+Run `npm ci` and `npm test` to check both the server and widget recovery behavior. The **Verify community assistant** workflow also checks the deployed backend from GitHub’s network on main-branch pushes. Its live check is advisory because provider outages or quota limits can occur independently of code changes.

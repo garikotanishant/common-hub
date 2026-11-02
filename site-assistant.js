@@ -48,21 +48,44 @@
   const endpoint = window.COMMON_ASSISTANT_CONFIG?.endpoint || "/api/chat";
   const aiConsentKey = "common.assistant.geminiConsent.v1";
 
-  async function checkAI() {
-    try {
-      const response = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
-      if (!response.ok) return;
-      const health = await response.json();
-      aiReady = health.configured === true;
-      const status = document.getElementById("assistantMode");
-      if (status) status.textContent = aiReady ? "Gemini · community guide" : "Community guide";
-      const consent = document.getElementById("assistantConsent");
-      if (consent) consent.hidden = !aiReady;
-    } catch { /* The local helper stays available on GitHub Pages without a backend. */ }
+  let aiCheckPromise = null;
+
+  function showAIConnection(message, ready = false) {
+    aiReady = ready;
+    const mode = document.getElementById("assistantMode");
+    if (mode) mode.textContent = ready ? "Gemini · community guide" : "Community guide · Gemini offline";
+    const connection = document.getElementById("assistantConnection");
+    if (connection) connection.textContent = message;
+    const retry = document.getElementById("assistantRetry");
+    if (retry) retry.hidden = ready;
+  }
+
+  function checkAI() {
+    if (aiCheckPromise) return aiCheckPromise;
+    const retry = document.getElementById("assistantRetry");
+    if (retry) retry.disabled = true;
+    aiCheckPromise = (async () => {
+      try {
+        const response = await fetch(endpoint, { signal: AbortSignal.timeout(10000), cache: "no-store" });
+        if (!response.ok) throw new Error("unavailable");
+        const health = await response.json();
+        showAIConnection(health.configured === true
+          ? "Gemini is connected. Select the checkbox to use AI answers."
+          : "Gemini isn’t configured yet. You can still browse the directory.", health.configured === true);
+      } catch {
+        showAIConnection("Can’t reach Gemini’s connection. Retry, or use the directory while it’s unavailable.");
+      } finally {
+        if (retry) retry.disabled = false;
+        aiCheckPromise = null;
+      }
+    })();
+    return aiCheckPromise;
   }
 
   async function answerWithAI(text) {
-    if (!aiReady || !document.getElementById("assistantAIConsent")?.checked) return false;
+    // A failed health check must not permanently disable chat for this tab.
+    // Only the visitor's consent controls whether a question is sent.
+    if (!document.getElementById("assistantAIConsent")?.checked) return false;
     aiBusy = true;
     const send = document.querySelector("#assistantForm button");
     const status = document.getElementById("assistantStatus");
@@ -71,16 +94,24 @@
     try {
       const history = getHistory().slice(0, -1).slice(-6).map(({ role, text }) => ({ role, text }));
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text, history }), signal: AbortSignal.timeout(25000) });
-      if (!response.ok) throw new Error(response.status === 429 ? "quota" : "unavailable");
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(response.status === 429 ? "quota" : result.error || "unavailable");
       if (typeof result.answer !== "string") throw new Error("unavailable");
+      showAIConnection("Gemini is connected.", true);
       appendMessage("assistant", result.answer);
       const catalog = await loadCatalog();
       const ids = new Set(Array.isArray(result.resourceIds) ? result.resourceIds : []);
       showActions(catalog.filter(r => ids.has(r.id)).slice(0, 3).map(r => ({ label: r.name, action: "navigate", value: `directory.html?resource=${encodeURIComponent(r.id)}` })));
       return true;
     } catch (error) {
-      appendMessage("assistant", error.message === "quota" ? "The AI request limit has been reached. You can still search and browse the directory below." : "Gemini isn’t available right now. You can still use the directory and saved places.");
+      const messages = {
+        quota: "The AI request limit has been reached. Please try again later, or search the directory below.",
+        not_configured: "Gemini isn’t configured yet. You can still search the directory below.",
+        invalid_api_key: "Gemini’s connection needs attention from the site owner. You can still search the directory below.",
+        model_unavailable: "The AI model is unavailable. You can still search the directory below."
+      };
+      if (error.message !== "quota") showAIConnection("Gemini is unavailable. Retry the connection or use the directory.");
+      appendMessage("assistant", messages[error.message] || "I couldn’t connect to Gemini. Please try again, or search the directory below.");
       const query = text.slice(0, 200);
       showActions([{ label: "Search the directory", action: "navigate", value: `directory.html?q=${encodeURIComponent(query)}` }]);
       return true;
@@ -187,7 +218,10 @@
     panel.hidden = !open;
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-label", open ? "Close COMMON helper" : "Open COMMON helper");
-    if (open) document.getElementById("assistantInput")?.focus();
+    if (open) {
+      document.getElementById("assistantInput")?.focus();
+      if (!aiReady) checkAI();
+    }
     else toggle.focus();
   }
 
@@ -212,7 +246,8 @@
           <button type="button" data-assistant-prompt="Show my saved resources">Saved resources</button>
           <button type="button" data-assistant-prompt="Help me suggest a resource">Suggest a resource</button>
         </div>
-        <div id="assistantConsent" class="assistant-consent" hidden><label><input id="assistantAIConsent" type="checkbox">Use Gemini for AI answers. My question and recent chat will be sent to Google. I’ll avoid sharing personal details.</label></div>
+        <div class="assistant-connection"><p id="assistantConnection" role="status">Checking Gemini’s connection…</p><button id="assistantRetry" type="button">Retry Gemini connection</button></div>
+        <div id="assistantConsent" class="assistant-consent"><label><input id="assistantAIConsent" type="checkbox">Use Gemini for AI answers. My question and recent chat will be sent to Google. I’ll avoid sharing personal details.</label></div>
         <p id="assistantStatus" class="assistant-status" role="status" hidden></p>
         <form id="assistantForm" class="assistant-form">
           <label class="sr-only" for="assistantInput">Ask COMMON helper</label>
@@ -232,6 +267,8 @@
     consent.checked = readSession(aiConsentKey, false) === true;
     consent.addEventListener("change", () => writeSession(aiConsentKey, consent.checked));
     renderHistory();
+    widget.querySelector("#assistantRetry").addEventListener("click", checkAI);
+    window.addEventListener("online", checkAI);
     checkAI();
   }
 
@@ -659,7 +696,7 @@
     }
 
     const category = categoryMatch(text);
-    if (/\b(search|find|look for|show me|browse)\b/.test(normalized) && !(aiReady && document.getElementById("assistantAIConsent")?.checked)) {
+    if (/\b(search|find|look for|show me|browse)\b/.test(normalized) && !document.getElementById("assistantAIConsent")?.checked) {
       let query = text.replace(/\b(search|find|look for|show me|browse|please|resources?|in the directory|directory)\b/gi, "").trim();
       if (category) query = query.replace(new RegExp(category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim();
       updateDirectorySearch(query, category);

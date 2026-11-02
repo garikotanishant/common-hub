@@ -171,6 +171,7 @@
       text-align: left;
     }
 
+    .assistant-connection button,
     .assistant-quick-actions button {
       min-height: 36px;
       padding: 0.45rem 0.65rem;
@@ -241,3 +242,8 @@
 
 @media(max-width:480px){.assistant-widget{right:12px;bottom:12px}.assistant-panel{width:calc(100vw - 24px);max-height:calc(100dvh - 100px)}}
 @media print{.assistant-widget{display:none}}
+
+.assistant-connection { padding: 0 1rem 0.75rem; font-size: 0.72rem; color: #43564f; }
+.assistant-connection p { margin: 0 0 0.4rem; }
+.assistant-connection button[hidden] { display: none; }
+.assistant-connection button:disabled { opacity: 0.55; cursor: wait; }
