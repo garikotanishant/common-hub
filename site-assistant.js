@@ -93,7 +93,7 @@
     if (status) { status.hidden = false; status.textContent = "Thinking…"; }
     try {
       const history = getHistory().slice(0, -1).slice(-6).map(({ role, text }) => ({ role, text }));
-      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text, history }), signal: AbortSignal.timeout(25000) });
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text, history }), signal: AbortSignal.timeout(50000) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(response.status === 429 ? "quota" : result.error || "unavailable");
       if (typeof result.answer !== "string") throw new Error("unavailable");
@@ -108,6 +108,7 @@
         quota: "The AI request limit has been reached. Please try again later, or search the directory below.",
         not_configured: "Gemini isn’t configured yet. You can still search the directory below.",
         invalid_api_key: "Gemini’s connection needs attention from the site owner. You can still search the directory below.",
+        provider_timeout: "Gemini took too long to respond. Please try again, or search the directory below.",
         model_unavailable: "The AI model is unavailable. You can still search the directory below."
       };
       if (error.message !== "quota") showAIConnection("Gemini is unavailable. Retry the connection or use the directory.");

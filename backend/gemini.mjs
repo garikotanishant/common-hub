@@ -1,5 +1,5 @@
 // This module runs on the server. Neither the key nor this module is published as a static asset.
-export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-lite", fetchImpl = fetch, siteOrigin = "" }) {
+export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-lite", fetchImpl = fetch, siteOrigin = "", revision = "" }) {
   const allowed = new Set(["https://garikotanishant.github.io", siteOrigin].filter(Boolean));
   const normalize = text => String(text).toLowerCase().replace(/[^a-z0-9 ]/g, " ");
   function reply(data, status, origin) {
@@ -11,7 +11,7 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-l
     const origin = request.headers.get("origin") || "";
     if (origin && !allowed.has(origin)) return reply({ error: "origin_not_allowed" }, 403, origin);
     if (request.method === "OPTIONS") return reply({}, 200, origin);
-    if (request.method === "GET") return reply({ configured: Boolean(apiKey), provider: apiKey ? "Gemini" : null }, 200, origin);
+    if (request.method === "GET") return reply({ configured: Boolean(apiKey), provider: apiKey ? "Gemini" : null, ...(revision ? { revision } : {}) }, 200, origin);
     if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405, origin);
     if (!apiKey) return reply({ error: "not_configured" }, 503, origin);
     if (!(request.headers.get("content-type") || "").startsWith("application/json")) return reply({ error: "json_required" }, 415, origin);
@@ -31,8 +31,8 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-l
     contents.push({ role: "user", parts: [{ text: body.message.trim() }] });
     try {
       const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(20000),
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents, generationConfig: { temperature: 0.25, maxOutputTokens: 600, responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { answer: { type: "STRING" }, resourceIds: { type: "ARRAY", items: { type: "STRING" } } }, required: ["answer", "resourceIds"] } } })
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(40000),
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents, generationConfig: { maxOutputTokens: 1200, ...(model === "gemini-3.1-flash-lite" ? { thinkingConfig: { thinkingLevel: "MINIMAL" } } : {}), responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { answer: { type: "STRING" }, resourceIds: { type: "ARRAY", items: { type: "STRING" } } }, required: ["answer", "resourceIds"] } } })
       });
       if (!response.ok) {
         if (response.status === 404) {
@@ -50,14 +50,17 @@ export function createChatHandler({ catalog, apiKey, model = "gemini-3.1-flash-l
       }
       const result = await response.json();
       const text = result.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("");
-      const parsed = JSON.parse(text || "{}");
+      if (result.candidates?.[0]?.finishReason === "MAX_TOKENS") return reply({ error: "answer_incomplete" }, 502, origin);
+      let parsed;
+      try { parsed = JSON.parse(text || "{}"); }
+      catch { return reply({ error: "invalid_provider_response" }, 502, origin); }
       if (typeof parsed.answer !== "string" || !parsed.answer.trim()) return reply({ error: "no_answer" }, 502, origin);
       const validIds = new Set(candidates.map(r => r.id));
       const resourceIds = [...new Set(Array.isArray(parsed.resourceIds) ? parsed.resourceIds : [])].filter(id => validIds.has(id)).slice(0, 3);
       return reply({ answer: parsed.answer.slice(0, 4000), resourceIds }, 200, origin);
-    } catch {
+    } catch (error) {
       // Never return provider responses, request headers, or secrets to the browser.
-      return reply({ error: "provider_unavailable" }, 502, origin);
+      return reply({ error: error?.name === "TimeoutError" || error?.name === "AbortError" ? "provider_timeout" : "provider_unavailable" }, 502, origin);
     }
   };
 }

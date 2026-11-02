@@ -60,3 +60,26 @@ test("books finds the library even when many other records share the city name",
   } });
   assert.equal((await handle(request({ message: "Where can I find books in Suwanee?" }))).status, 200);
 });
+
+test("Flash-Lite uses minimal thinking with enough room for structured output", async () => {
+  const handle = createChatHandler({ catalog, apiKey: "test-secret", fetchImpl: async (_url, options) => {
+    const config = JSON.parse(options.body).generationConfig;
+    assert.equal(config.temperature, undefined);
+    assert.equal(config.thinkingConfig.thinkingLevel, "MINIMAL");
+    assert.ok(config.maxOutputTokens >= 1200);
+    return Response.json({ candidates: [{ content: { parts: [{ text: '{"answer":"Try the library.","resourceIds":[]}' }] } }] });
+  } });
+  assert.equal((await handle(request({ message: "books" }))).status, 200);
+});
+
+test("incomplete output and provider timeouts have safe, distinct errors", async () => {
+  for (const [fetchImpl, expected] of [
+    [async () => Response.json({ candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ text: '{"answer":' }] } }] }), "answer_incomplete"],
+    [async () => Response.json({ candidates: [{ content: { parts: [{ text: "not JSON" }] } }] }), "invalid_provider_response"],
+    [async () => { throw new DOMException("test-secret", "TimeoutError"); }, "provider_timeout"]
+  ]) {
+    const handle = createChatHandler({ catalog, apiKey: "test-secret", fetchImpl });
+    const result = await (await handle(request({ message: "books" }))).json();
+    assert.deepEqual(result, { error: expected });
+  }
+});
