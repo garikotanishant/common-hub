@@ -10,6 +10,7 @@ const catalog = sandbox.window.COMMON_RESOURCE_RECORDS.map(r => Object.fromEntri
   ["id", "name", "category", "description", "utility", "address", "phone", "hours", "audience", "requirements", "sourceUrl", "verificationNotes", "tags"].map(key => [key, r[key]])
 ));
 await mkdir(path.join(root, "backend"), { recursive: true });
+await writeFile(path.join(root, "backend/deployment.mjs"), "export default " + JSON.stringify(process.env.COMMIT_REF || "local") + ";\n");
 await writeFile(path.join(root, "backend/catalog.mjs"), "export default " + JSON.stringify(catalog) + ";\n");
 await mkdir(path.join(root, "public"), { recursive: true });
 const files = ["index.html", "directory.html", "about.html", "contact.html", "submit-resource.html", "common_suwanee_gwinnett_community_resource_directory.html", "style.css", "script.js", "resources-data.js", "earth.js", "submit-resource.js", "site-assistant.js", "assistant.css", "assistant-config.js", "assets", "Website Info_Data"];

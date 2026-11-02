@@ -5,3 +5,4 @@ node_modules/
 public/
 .netlify/
 backend/catalog.mjs
+backend/deployment.mjs
