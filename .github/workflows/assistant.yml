@@ -31,6 +31,6 @@ jobs:
           if (!health.ok || config.configured !== true) process.exit(1);
           const chat = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ message: 'Where can I find books in Suwanee?', history: [] }), signal: AbortSignal.timeout(30000) });
           const result = await chat.json();
-          console.log('Gemini reply:', chat.status, 'answer received:', typeof result.answer === 'string' && Boolean(result.answer.trim()), 'error:', result.error || 'none');
+          console.log('Gemini reply:', chat.status, 'answer received:', typeof result.answer === 'string' && Boolean(result.answer.trim()), 'error:', result.error || 'none', 'provider status:', result.providerStatus || 'none', 'reason:', result.reason || 'none');
           if (!chat.ok || typeof result.answer !== 'string' || !result.answer.trim()) process.exit(1);
           JS
